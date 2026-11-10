@@ -1,0 +1,36 @@
+const assert=require('node:assert/strict'),path=require('node:path');
+module.exports=async function reflectionFlow(page,out){
+  await page.locator('#reflectionForm').waitFor();
+  assert.equal(await page.locator('#chatInput').count(),0);
+  assert.equal(await page.locator('#reflectionForm textarea[required]').count(),0);
+  assert.equal(await page.locator('#reflectionForm textarea').count(),1);
+  assert.equal(await page.locator('[data-self],#exitReason,#colorOriginal').count(),0);
+  assert((await page.locator('#projectResult').innerText()).includes('K = 3'));
+  assert.equal(await page.getByText('四维自评',{exact:true}).count(),0);
+  if(out)await page.screenshot({path:path.join(out,'04a-reflection.png'),fullPage:true});
+  // Native radio groups retain unfinished work, including a misconception, on reload.
+  await page.locator('input[name=transfer][value=keep]').check();
+  await page.locator('input[name=application][value=review]').check();
+  await page.locator('#reflectionFocus').selectOption('k');
+  await page.reload();await page.locator('#reflectionForm').waitFor();
+  assert(await page.locator('input[name=transfer][value=keep]').isChecked());
+  assert(await page.locator('input[name=application][value=review]').isChecked());
+  assert.equal(await page.locator('#reflectionFocus').inputValue(),'k');
+  await page.setViewportSize({width:390,height:844});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  if(out)await page.screenshot({path:path.join(out,'04b-reflection-mobile.png'),fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  await page.getByRole('button',{name:'完成回顾，查看反馈'}).click();
+  await page.locator('#reflectionFeedback').waitFor();
+  assert((await page.locator('#reflectionFeedback').innerText()).includes('还需回看'));
+  assert((await page.locator('#reflectionFeedback').innerText()).includes('0.4 最小'));
+  assert((await page.locator('#reflectionFeedback').innerText()).includes('模拟过程'));
+  assert.equal(await page.locator('[data-self]').count(),0);
+  await page.locator('#chatInput').waitFor();
+  await page.reload();await page.locator('#reflectionFeedback').waitFor();
+  assert((await page.locator('#reflectionFeedback').innerText()).includes('保留原中心与分组'));
+  await page.locator('.reflection-extension summary').click();
+  await page.getByRole('button',{name:'将图案减为 5 种代表色'}).click();
+  assert((await page.locator('#colorCaption').innerText()).includes('均值颜色'));
+  if(out)await page.screenshot({path:path.join(out,'04-exit.png'),fullPage:true});
+};
